@@ -1,19 +1,45 @@
 use crate::AppState;
 use actix_web::{
-    error,
+    error, get, post,
     web::{Data, Json, Path},
     Error, HttpResponse,
 };
 use entity::user as User;
 use sea_orm::{ActiveModelTrait, ActiveValue, EntityTrait};
+use utoipa::OpenApi;
 use uuid::Uuid;
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(OpenApi)]
+#[openapi(
+        paths(
+            create,
+            read_all,
+            read
+        ),
+        components(
+            schemas(CreateUserBody)
+        ),
+        tags(
+            (name = "user", description = "User API")
+        )
+    )]
+pub struct ApiDoc;
+
+pub fn scoped_router(cfg: &mut actix_web::web::ServiceConfig) {
+    cfg.service(create).service(read_all).service(read);
+}
+
+#[derive(serde::Deserialize, Clone, utoipa::ToSchema)]
 pub struct CreateUserBody {
     name: String,
 }
 
-#[actix_web::post("/users")]
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Created user", body = [entity::calendar::Model])
+    )
+)]
+#[post("/")]
 pub async fn create(
     state: Data<AppState>,
     body: Json<CreateUserBody>,
@@ -29,7 +55,12 @@ pub async fn create(
     Ok(HttpResponse::Created().json(user))
 }
 
-#[actix_web::get("/users")]
+#[utoipa::path(
+    responses(
+        (status = 200, description = "List of all users", body = [entity::calendar::Model])
+    )
+)]
+#[get("/")]
 pub async fn read_all(state: Data<AppState>) -> Result<HttpResponse, Error> {
     let users = User::Entity::find()
         .all(&state.database)
@@ -39,7 +70,15 @@ pub async fn read_all(state: Data<AppState>) -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().json(users))
 }
 
-#[actix_web::get("/users/{user_id}")]
+#[utoipa::path(
+    params(
+        ("user_id", description = "UUID of the user")
+    ),
+    responses(
+        (status = 200, description = "User object by UserID", body = [entity::calendar::Model])
+    )
+)]
+#[get("/{user_id}")]
 pub async fn read(state: Data<AppState>, user_id: Path<String>) -> Result<HttpResponse, Error> {
     let user = User::Entity::find_by_id(user_id.clone())
         .one(&state.database)

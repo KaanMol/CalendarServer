@@ -37,20 +37,22 @@ async fn main() -> std::io::Result<()> {
     // Initialise the app state for Actix
     let state = AppState { database };
 
-    let calendar_api = routes::calendar::ApiDoc::openapi();
-
     // Create the Actix app
     let app = move || {
         App::new()
             .wrap(actix_web::middleware::Logger::default())
             .app_data(Data::new(state.clone()))
-            .service(
-                SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-doc/openapi.json", calendar_api.clone()),
-            )
-            .service(routes::user::create)
-            .service(routes::user::read_all)
-            .service(routes::user::read)
+            .service(SwaggerUi::new("/swagger-ui/{_:.*}").urls(vec![
+                (
+                    utoipa_swagger_ui::Url::new("user", "/api-doc/user.json"),
+                    routes::user::ApiDoc::openapi(),
+                ),
+                (
+                    utoipa_swagger_ui::Url::new("calendar", "/api-doc/calendar.json"),
+                    routes::calendar::ApiDoc::openapi(),
+                ),
+            ]))
+            .service(actix_web::web::scope("/user").configure(routes::user::scoped_router))
             .service(actix_web::web::scope("/calendar").configure(routes::calendar::scoped_router))
     };
 
