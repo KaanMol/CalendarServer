@@ -5,6 +5,8 @@ mod routes;
 
 use actix_web::{web::Data, App, HttpServer};
 use ns_scraper::{route::Coordinate, route_builder::RouteFinderBuilder};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -35,16 +37,21 @@ async fn main() -> std::io::Result<()> {
     // Initialise the app state for Actix
     let state = AppState { database };
 
+    let calendar_api = routes::calendar::ApiDoc::openapi();
+
     // Create the Actix app
     let app = move || {
         App::new()
             .wrap(actix_web::middleware::Logger::default())
             .app_data(Data::new(state.clone()))
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}")
+                    .url("/api-doc/openapi.json", calendar_api.clone()),
+            )
             .service(routes::user::create)
             .service(routes::user::read_all)
             .service(routes::user::read)
-            .service(routes::calendar::create)
-            .service(routes::calendar::read_for_user)
+            .service(actix_web::web::scope("/calendar").configure(routes::calendar::scoped_router))
     };
 
     // Start the Actix server

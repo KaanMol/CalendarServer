@@ -1,7 +1,7 @@
-use crate::AppState;
+use crate::{calendar, AppState};
 use actix_web::{
-    error,
-    web::{Data, Json, Query},
+    error, get, post,
+    web::{self, Data, Json, Query},
     Error, HttpResponse,
 };
 use entity::calendar as Calendar;
@@ -9,15 +9,41 @@ use entity::user as User;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ModelTrait;
 use sea_orm::{ActiveValue, EntityTrait};
+use utoipa::OpenApi;
 use uuid::Uuid;
 
-#[derive(serde::Deserialize, Clone)]
-pub struct CreateCalendarBody {
+#[derive(OpenApi)]
+#[openapi(
+        paths(
+            create,
+            read_for_user
+        ),
+        components(
+            schemas(CreateCalendarBody, FindCalendarQuery)
+        ),
+        tags(
+            (name = "calendar", description = "Calendar API")
+        )
+    )]
+pub struct ApiDoc;
+
+#[derive(serde::Deserialize, Clone, utoipa::ToSchema)]
+struct CreateCalendarBody {
     name: String,
     user_id: String,
 }
 
-#[actix_web::post("/calendars")]
+pub fn scoped_router(cfg: &mut web::ServiceConfig) {
+    cfg.service(create).service(read_for_user);
+}
+
+#[utoipa::path(
+    request_body = CreateCalendarBody,
+    responses(
+        (status = 200, description = "Create new calendar", body = Calendar::Model)
+    )
+)]
+#[post("/")]
 pub async fn create(
     state: Data<AppState>,
     body: Json<CreateCalendarBody>,
@@ -44,12 +70,17 @@ pub async fn create(
     Ok(HttpResponse::Created().json(calendar))
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, utoipa::ToSchema)]
 pub struct FindCalendarQuery {
     user: String,
 }
 
-#[actix_web::get("/calendars")]
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Get all calendars", body = [entity::calendar::Model])
+    )
+)]
+#[get("/")]
 pub async fn read_for_user(
     query: Query<FindCalendarQuery>,
     state: Data<AppState>,
