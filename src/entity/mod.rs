@@ -1,5 +1,6 @@
 pub mod calendar_event;
 pub mod user;
+pub mod calendar;
 
 fn to_json<T>(value: T) -> String
 where

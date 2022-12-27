@@ -8,12 +8,24 @@ use actix_web::{
     web::{Data, Json, Path},
     Error, HttpResponse,
 };
+use utoipa::ToSchema;
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, ToSchema)]
 pub struct CreateUserBody {
     name: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/users",
+    responses(
+        (status = 201, description = "User created successfully", body = CreateUserBody),
+        // (status = NOT_FOUND, description = "Pet was not found")
+    ),
+    params(
+        ("id" = u64, Path, description = "Pet database id to get Pet for"),
+    )
+)]
 #[actix_web::post("/users")]
 pub async fn create(
     state: Data<AppState>,

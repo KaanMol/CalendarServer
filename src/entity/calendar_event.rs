@@ -4,16 +4,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CalendarEvent {
-    id: String,
-    title: String,
-    description: String,
-    start: chrono::NaiveDateTime,
-    end: chrono::NaiveDateTime,
-    all_day: bool,
-    location: String,
-    repeat: Repeat,
-    metadata: Metadata,
-    original_event: OriginalEvent,
+    pub user_id: String,
+    pub title: String,
+    pub description: String,
+    // pub start: chrono::NaiveDateTime,
+    // pub end: chrono::NaiveDateTime,
+    pub all_day: bool,
+    pub location: String,
+    // pub repeat: Repeat,
+    // pub metadata: Metadata,
+    // pub original_event: OriginalEvent,
 }
 
 impl fmt::Display for CalendarEvent {

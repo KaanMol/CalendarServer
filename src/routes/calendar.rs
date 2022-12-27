@@ -1,22 +1,60 @@
-// use crate::AppState;
-// use actix_web::{
-//     error,
-//     web::{Data, Json, Query},
-//     Error, HttpResponse,
-// };
-// use entity::calendar as Calendar;
-// use entity::user as User;
-// use sea_orm::ActiveModelTrait;
-// use sea_orm::ModelTrait;
-// use sea_orm::{ActiveValue, EntityTrait};
-// use uuid::Uuid;
+use crate::{AppState, entity, routes::{DataResponse, ErrorResponse, Response}};
+use actix_web::{
+    error,
+    web::{Data, Json, Query, Path},
+    Error, HttpResponse,
+};
+use uuid::Uuid;
 
-// #[derive(serde::Deserialize, Clone)]
-// pub struct CreateCalendarBody {
-//     name: String,
-//     user_id: String,
-// }
+#[derive(serde::Deserialize, Clone)]
+pub struct CreateCalendarBody {
+    name: String
+}
 
+#[actix_web::post("/calendars")]
+pub async fn create(
+    state: Data<AppState>,
+    body: Json<CreateCalendarBody>,
+) -> Result<HttpResponse, Error> {
+    let result = state
+        .db
+        .collection::<entity::calendar::Calendar>("calendars")
+        .insert_one(
+            entity::calendar::Calendar {
+                name: body.name.clone()
+            },
+            None,
+        )
+        .await
+        .map_err(|e| error::ErrorBadRequest(ErrorResponse::new("Could not create calendar", e)))?;
+
+    Ok(HttpResponse::Created().json(DataResponse::new("Created calendar", result.inserted_id)))
+}
+
+#[actix_web::get("/calendars/{calendar_id}")]
+pub async fn read(state: Data<AppState>, calendar_id: Path<String>) -> Result<HttpResponse, Error> {
+    let id = crate::routes::parse_id(calendar_id.to_string())?;
+
+    let calendar = state
+        .db
+        .collection::<entity::calendar::Calendar>("calendars")
+        .find_one(
+            mongodb::bson::doc! {
+                "_id": id
+            },
+            None,
+        )
+        .await
+        .map_err(|e| error::ErrorBadRequest(ErrorResponse::new("Could not query calendars", e)))?
+        .ok_or_else(|| {
+            error::ErrorNotFound(Response::new(format!(
+                "Could not find calendar with id {}",
+                calendar_id
+            )))
+        })?;
+
+    Ok(HttpResponse::Ok().json(DataResponse::new("Found calendar", calendar)))
+}
 // #[actix_web::post("/calendars")]
 // pub async fn create(
 //     state: Data<AppState>,
@@ -72,6 +110,7 @@
 
 //     Ok(HttpResponse::Ok().json(calendars))
 // }
+
 
 // // TODO: Update calendar
 

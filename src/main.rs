@@ -8,6 +8,8 @@ use ns_scraper::{route::Coordinate, route_builder::RouteFinderBuilder};
 
 use mongodb::{options::ClientOptions, Client};
 use serde::{Deserialize, Serialize};
+use utoipa::{OpenApi};
+use utoipa_swagger_ui::SwaggerUi;
 use std::sync::*;
 
 #[derive(Clone)]
@@ -38,6 +40,24 @@ async fn main() -> std::io::Result<()> {
     // Initialise the app state for Actix
     let state = AppState { client, db };
 
+    #[derive(OpenApi)]
+    #[openapi(
+        paths(
+            routes::user::create
+        ),
+        components(
+            // schemas(todo::Todo, todo::TodoUpdateRequest, todo::ErrorResponse)
+        ),
+        tags(
+            (name = "calendar", description = "The new calendar API"),
+        ),
+        // modifiers(&SecurityAddon)
+    )]
+    struct ApiDoc;
+
+    // Make instance variable of ApiDoc so all worker threads gets the same instance.
+    let openapi = ApiDoc::openapi();
+
     // Create the Actix app
     let app = move || {
         App::new()
@@ -49,6 +69,13 @@ async fn main() -> std::io::Result<()> {
             .service(routes::source::create)
             .service(routes::filter::create)
             .service(routes::modifiers::create)
+            .service(routes::calendar::create)
+            .service(routes::calendar::read)
+            .service(routes::calendar_event::create)
+            .service(routes::calendar_event::read_all)
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()),
+            )
         // .service(routes::calendar::create)
         // .service(routes::calendar::read_for_user)
     };
